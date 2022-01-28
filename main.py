@@ -56,11 +56,10 @@ def start_abstreet_with_map(map_path):
     print('Starting A/B Street API')
     abst_path = '/home/dabreegster/abstreet'
     process = subprocess.Popen([abst_path + '/target/release/headless',
-                               '--port', '1234'], cwd=abst_path, stderr=subprocess.PIPE)
+                               '--port', '1234'], cwd=abst_path, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
     for line in iter(process.stderr.readline, ''):
         if line:
             line = str(line)
-            print(line)
             if 'Listening on' in line:
                 print(f'Loading {map_path}')
                 requests.get(
@@ -69,6 +68,7 @@ def start_abstreet_with_map(map_path):
 
 
 def url_to_json(url):
+    print(f'Fetching {url}')
     return json.loads(requests.get(url).content)
 
 
