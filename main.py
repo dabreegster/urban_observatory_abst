@@ -1,9 +1,14 @@
 import json
 import requests
 import statistics
+import subprocess
+import time
 
 
 def main():
+    process = start_abstreet_with_map(
+        'data/system/gb/manchester/maps/levenshulme.bin')
+    print('Scraping sensor data')
     for url in url_to_json('https://muo-backend.cs.man.ac.uk/deployments/levenshulme-bee-network')['deployedOnPlatform']:
         platform = url_to_json(url)
         if platform.get('description') == 'Traffic camera':
@@ -16,6 +21,27 @@ def main():
                         ref = timeseries.split('/')[-1]
                         print(f'Sensor at {location}')
                         scrape(ref)
+
+    process.terminate()
+
+
+def start_abstreet_with_map(map_path):
+    # Start the A/B Street headless API and load the correct map. This requires
+    # things to already be built, with maps downloaded, and all in a certain
+    # path
+    print('Starting A/B Street API')
+    abst_path = '/home/dabreegster/abstreet'
+    process = subprocess.Popen([abst_path + '/target/release/headless',
+                               '--port', '1234'], cwd=abst_path, stderr=subprocess.PIPE)
+    for line in iter(process.stderr.readline, ''):
+        if line:
+            line = str(line)
+            print(line)
+            if 'Listening on' in line:
+                print(f'Loading {map_path}')
+                requests.get(
+                    'http://localhost:1234/sim/load-blank?map=' + map_path)
+                return process
 
 
 def url_to_json(url):
