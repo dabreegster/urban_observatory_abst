@@ -35,6 +35,14 @@ def main():
 
     process.terminate()
 
+    # Match A/B Street's slightly weird Counter JSON format
+    counter = {
+        'map': {},
+        'sum': 0
+    }
+    for r, count in per_road.items():
+        counter['map'][str(r)] = count
+        counter['sum'] += count
     output = {
         'map': {
             'city': {
@@ -44,7 +52,7 @@ def main():
             'map': 'levenshulme'
         },
         'description': 'from Manchester-I data',
-        'per_road': list(per_road.items())
+        'per_road': counter
     }
     print(json.dumps(output))
 
