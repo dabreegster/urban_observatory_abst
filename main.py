@@ -1,3 +1,4 @@
+import collections
 import json
 import requests
 import statistics
@@ -9,6 +10,8 @@ def main():
     process = start_abstreet_with_map(
         'data/system/gb/manchester/maps/levenshulme.bin')
     print('Scraping sensor data')
+
+    per_road = collections.defaultdict(int)
     for url in url_to_json('https://muo-backend.cs.man.ac.uk/deployments/levenshulme-bee-network')['deployedOnPlatform']:
         platform = url_to_json(url)
         if platform.get('description') == 'Traffic camera':
@@ -19,10 +22,31 @@ def main():
                     # We don't want speed
                     if 'count' in timeseries:
                         ref = timeseries.split('/')[-1]
-                        print(f'Sensor at {location}')
-                        scrape(ref)
+                        count = scrape_mean_vehicle_count(ref)
+                        # Map this location to a RoadID
+                        road_id = int(requests.get(
+                            f'http://localhost:1234/map/get-nearest-road?lon={location[0]}&lat={location[1]}&threshold_meters=100').text)
+                        print(
+                            f'{ref} at {location} (road {road_id}) has count {count}')
+                        # TODO We usually have both directons per road. Until
+                        # the A/B Street traffic count format handles
+                        # DirectedRoadID, just sum
+                        per_road[road_id] += count
 
     process.terminate()
+
+    output = {
+        'map': {
+            'city': {
+                'country': 'gb',
+                'city': 'manchester'
+            },
+            'map': 'levenshulme'
+        },
+        'description': 'from Manchester-I data',
+        'per_road': list(per_road.items())
+    }
+    print(json.dumps(output))
 
 
 def start_abstreet_with_map(map_path):
@@ -48,8 +72,7 @@ def url_to_json(url):
     return json.loads(requests.get(url).content)
 
 
-def scrape(ref):
-    print(f'Scraping {ref}')
+def scrape_mean_vehicle_count(ref):
     start_time = '2021-04-22T00:00:00.000Z'
     end_time = '2022-01-27T15:38:51.077Z'
     resolution = '1d'
@@ -59,7 +82,7 @@ def scrape(ref):
     # We don't care about the dates yet (until we know when the LTN was installed...)
     # TODO But also ignore outliers like Christmas
     counts = [entry['value'] for entry in data]
-    print(statistics.mean(counts))
+    return int(statistics.mean(counts))
 
 
 if __name__ == "__main__":
