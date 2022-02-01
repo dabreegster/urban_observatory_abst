@@ -52,7 +52,11 @@ def main():
             'map': 'levenshulme'
         },
         'description': 'from Manchester-I data',
-        'per_road': counter
+        'per_road': counter,
+        'per_intersection': {
+            'map': {},
+            'sum': 0
+        }
     }
     print(json.dumps(output))
 
